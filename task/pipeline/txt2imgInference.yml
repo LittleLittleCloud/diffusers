@@ -1,0 +1,24 @@
+- name: 'txt2img_inference.v0'
+  base_model: '../model/base/GhostMix.safetensors' # model parameter
+  loras: # lora : weight
+    - lora:
+      name: '../model/lora/light_and_shadow.safetensors'
+      weight: 0.3
+    - lora:
+      name: '../model/lora/lolita.safetensors'
+      weight: 0.4
+    - lora:
+      name: '../model/lora/3d_rendering.safetensors'
+      weight: 0.3
+  # inference parameter
+  prompt: '1girl'
+  negative_prompt: 'ng_deepnegative_v1_75t,badhandv4, (worst quality:1), (low quality:2), (normal quality:2), lowres,watermark, monochrome'
+  step: 30
+  width: 512
+  height: 728
+  seed: 321001525
+  sampler: 'ddim'
+  # output folder
+  output_folder: 'output'
+  cfg: 5.0
+  num_images_per_prompt: 5
