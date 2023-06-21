@@ -1,13 +1,15 @@
 import argparse
 import omegaconf
-from .runner.txt2img import Txt2ImgInferenceRunner
+from .runner.txt2img_inference import Txt2ImgInferenceRunner
+from .runner.txt2img_train_lora import Txt2ImgLoraTraningRunner
 from .log import get_logger
 import logging
 import os
 Logging = get_logger(__name__)
 Logging.setLevel(logging.DEBUG)
 AVAILABLE_RUNNERS = {
-    Txt2ImgInferenceRunner.name: Txt2ImgInferenceRunner
+    Txt2ImgInferenceRunner.name: Txt2ImgInferenceRunner,
+    Txt2ImgLoraTraningRunner.name: Txt2ImgLoraTraningRunner
 }
 def parse_args():
     parser = argparse.ArgumentParser(description='stable diffusion pipeline runner')
@@ -30,7 +32,7 @@ def main(args):
     for task in cfg:
         task['_pipeline_path'] = pipeline_path
         Logging.info(f'Running task: {task.name}')
-        runner = AVAILABLE_RUNNERS[task.name]()
+        runner = AVAILABLE_RUNNERS[task.task]()
         runner.execute(task)
 
 if __name__ == '__main__':

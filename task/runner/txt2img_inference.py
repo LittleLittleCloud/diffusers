@@ -4,46 +4,16 @@ from diffusers import StableDiffusionPipeline
 from diffusers.utils.loras import load_lora_weights
 from task.log import get_logger
 import os
+from task.runner.runner import Runner
+from task.runner.utils import load_pipeline
 Logger = get_logger(__name__)
-class Runner:
-    name: str = None
-    def execute(self, config: omegaconf.omegaconf):
-        pass
 
 class Txt2ImgInferenceRunner(Runner):
     name: str = 'txt2img_inference.v0'
     def execute(self, config: omegaconf.omegaconf):
         pipeline_directory = os.path.dirname(config._pipeline_path)
         Logger.debug(f'pipeline directory: {pipeline_directory}')
-        base_model = config.base_model
-        Logger.debug(os.path.join(pipeline_directory, base_model))
-        if os.path.exists(os.path.join(pipeline_directory, base_model)):
-            base_model = os.path.join(pipeline_directory, base_model)
-        sampler = config.sampler
-        device = 'device' in config and config.device or 'cuda'
-        dtype = 'dtype' in config and config.dtype or torch.float16
-
-        Logger.info(f'Loading model from {base_model}')
-        Logger.info(f'Using sampler: {sampler}')
-        pipe = StableDiffusionPipeline.from_ckpt(
-            base_model,
-            load_safety_checker = False,
-            scheduler_type=sampler,
-            torch_dtype=dtype)
-        pipe = pipe.to(device)
-
-        loras = 'loras' in config and config.loras or []
-        for lora in loras:
-            if os.path.exists(os.path.join(pipeline_directory, lora.name)):
-                lora.name = os.path.join(pipeline_directory, lora.name)
-            Logger.info(f'Applying lora: {lora.name} with weight {lora.weight}')
-            pipe = load_lora_weights(
-                    pipeline = pipe,
-                    checkpoint_path=lora.name,
-                    multiplier=lora.weight,
-                    device=device,
-                    dtype=dtype)
-        
+        pipe = load_pipeline(config.model, pipeline_directory, Logger)
         # generate image
         width = 'width' in config and config.width or 512
         height = 'height' in config and config.height or 768
@@ -86,4 +56,3 @@ class Txt2ImgInferenceRunner(Runner):
                 f.write(prompt)
 
 
-        

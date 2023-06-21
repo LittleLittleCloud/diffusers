@@ -1,24 +1,34 @@
-- name: 'txt2img_inference.v0'
-  base_model: '../model/base/GhostMix.safetensors' # model parameter
-  loras: # lora : weight
-    - lora:
-      name: '../model/lora/light_and_shadow.safetensors'
-      weight: 0.3
-    - lora:
-      name: '../model/lora/lolita.safetensors'
-      weight: 0.4
-    - lora:
-      name: '../model/lora/3d_rendering.safetensors'
-      weight: 0.3
+- task: 'txt2img_inference.v0'
+  name: 'txt2img_inference'
+
+  # model configuration
+  model:
+    base_model: '../model/base/majicMIX.safetensors' # model parameter
+    loras: # lora : weight
+      - lora:
+        name: '../model/lora/light_and_shadow.safetensors'
+        weight: 0
+      - lora:
+        name: '../model/lora/3d_rendering.safetensors'
+        weight: 0
+      - lora:
+        name: '../model/lora/lolita.safetensors'
+        weight: 0.5
+      - lora:
+        name: '/home/xiaoyuz/diffusers/task/pipeline/output/lora/lora.bin'
+        weight: 0.8
+    sampler: 'ddim'
+    
   # inference parameter
-  prompt: '1girl'
+  prompt: 'lolita girl and yellow pokemon:5, big city, top quality, high resolution, masterpiece, oil painting'
   negative_prompt: 'ng_deepnegative_v1_75t,badhandv4, (worst quality:1), (low quality:2), (normal quality:2), lowres,watermark, monochrome'
   step: 30
   width: 512
-  height: 728
-  seed: 321001525
-  sampler: 'ddim'
+  height: 768
+  seed: 32100152
+  cfg: 7.0
+  num_images_per_prompt: 10
+
   # output folder
   output_folder: 'output'
-  cfg: 5.0
-  num_images_per_prompt: 5
+  

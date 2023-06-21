@@ -1,0 +1,43 @@
+- task: 'txt2img_lora_training.v0'
+  name: 'txt2img_lora_training'
+  # model configuration
+  model:
+    base_model: '../model/base/majicMIX.safetensors'
+      
+  # dataset
+  # can be a dataset from huggingface
+  # or a dataset from local
+  dataset_name: 'lambdalabs/pokemon-blip-captions'
+  image_column: 'image'
+  caption_column: 'text'
+  max_train_samples: 10000 # for debugging purpose
+  center_crop: False # center crop the image to the resolution
+  random_flip: True # randomly flip the image horizontally
+  resolution: [512, 512] # [width, height]
+
+  # train option
+  seed: 321001525
+  batch_size: 1
+  num_train_epochs: 50
+  learning_rate: 0.0001
+  checkpoint_steps: 500 # Save a checkpoint of the training state every X updates. These checkpoints are only suitable for resuming training using `--resume_from_checkpoint`.
+  resume_from_checkpoint: 'latest' #Resume from a previous checkpoint file located inside the output directory.
+  gradient_accumulation_steps: 1
+  mixed_precision: True # Use mixed precision training. Mixed precision training is only available for GPUs with compute capability >= 7.0.
+  allow_tf32: False #Enable TF32 for faster training on Ampere GPUs, cf https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices
+  scale_lr: False
+  use_8bit_adam: False
+  # snr_gamma: 5.0 # "SNR weighting gamma to be used if rebalancing the loss. Recommended value is 5.0. More details here: https://arxiv.org/abs/2303.09556."
+  # max_grad_norm: 1.0 # "Max gradient norm."
+  
+  # validation option
+  validation_prompt: 'wedding, top quality, high resolution, masterpiece'
+  validation_negative_prompt: 'bad, low quality, low resolution, ugly'
+  num_validation_images: 4
+  validation_epochs: 1
+
+  # output option
+  output_folder: 'output/lora' # The output directory where the model predictions and checkpoints will be written.
+  output_name: 'lora.bin' # The name of the output model.
+  logging_folder: 'logs'  # The output directory where the logs will be written. It would be $(output_folder)/$(logging_folder)
+  save_as_safe_tensors: False # Save the model as safe tensors. This will save the model in a format that can be loaded by the SafeTensors library.
