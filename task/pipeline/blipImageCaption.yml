@@ -1,0 +1,27 @@
+- task: 'blip_image_caption.v0'
+  name: 'blip_image_caption'
+  
+  # blip model config
+  model:
+    checkpoint: 'Salesforce/blip2-opt-2.7b'
+  
+  # inference parameter
+  inference:
+    device: 'cuda'
+    batch_size: 20
+    trigger_world: 'fengyizhou'
+  
+  # input folder
+  input:
+    input_folder: '../dataset/fengpig'
+    patterns:
+      - '*.JPG'
+      - '*.png'
+    recursive: True
+  
+  # output folder
+  output:
+    output_folder: '../dataset/fengpig-blip' # if ignore, will use input_folder as output_folder
+    image_column: 'image'
+    caption_column: 'text'
+    output_as_image_folder: True # if True, will generate metadata.csv and images

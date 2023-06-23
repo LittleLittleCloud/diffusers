@@ -12,13 +12,13 @@ import os
 from task.runner.runner import Runner
 from accelerate import Accelerator
 from accelerate.utils import ProjectConfiguration, set_seed
-from task.runner.utils import get_path
+from task.runner.utils import get_path, get_local_path
 from diffusers.optimization import get_scheduler
 import torch.nn.functional as F
 import datasets
 import transformers
 from transformers import CLIPTextModel, CLIPTokenizer
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 import diffusers
 from diffusers import AutoencoderKL, DDPMScheduler, DiffusionPipeline, UNet2DConditionModel
 from diffusers.models.attention_processor import LoRAAttnProcessor
@@ -30,7 +30,7 @@ Logger = get_logger(__name__)
 def main(config: omegaconf.omegaconf):
     pipeline_path = config._pipeline_path
     pipeline_directory = os.path.dirname(pipeline_path)
-    output_dir = get_path(pipeline_directory, config.output_folder)
+    output_dir = get_local_path(pipeline_directory, config.output_folder)
     Logger.info(f'Output directory: {output_dir}')
     logging_dir = os.path.join(output_dir, config.logging_folder)
     Logger.info(f'Logging to {logging_dir}')
@@ -39,11 +39,12 @@ def main(config: omegaconf.omegaconf):
     Logger.info(f'Checkpoint total limit: {checkpoint_total_limit}')
     Logger.info(f'Gradient accumulation steps: {gradient_accumulation_steps}')
     
-    accelerator_project_config = ProjectConfiguration(total_limit=checkpoint_total_limit)
+    accelerator_project_config = ProjectConfiguration(
+        logging_dir=logging_dir,
+        total_limit=checkpoint_total_limit)
     accelerator = Accelerator(
         log_with='tensorboard',
         gradient_accumulation_steps=gradient_accumulation_steps,
-        logging_dir=logging_dir,
         project_config=accelerator_project_config,
     )
 
@@ -220,22 +221,28 @@ def main(config: omegaconf.omegaconf):
     # download the dataset.
 
     dataset_name = 'dataset_name' in config and config.dataset_name or None
+    dataset_name = get_path(pipeline_directory, dataset_name)
     dataset_config_name = 'dataset_config_name' in config and config.dataset_config_name or None
     cache_dir = 'cache_dir' in config and config.cache_dir or None
     if dataset_name is not None:
         # Downloading and loading a dataset from the hub.
         Logger.info(f"Loading dataset {dataset_name} with config {dataset_config_name}")
-        dataset = load_dataset(
+        
+        try:
+            dataset = load_dataset(
             dataset_name,
             dataset_config_name,
             cache_dir=cache_dir,
-        )
+            )
+        except ValueError:
+            Logger.info(f"Loading dataset {dataset_name} with config {dataset_config_name} failed. Trying to load from disk.")
+            dataset = load_from_disk(dataset_name)
     else:
         train_data_dir = 'train_data_dir' in config and config.train_data_dir or None
         train_data_dir = get_path(pipeline_directory, train_data_dir)
         Logger.info(f"Loading dataset from {train_data_dir}")
         data_files = {}
-        data_files["train"] = os.path.join(train_data_dir, "**")
+        data_files = os.path.join(train_data_dir, "**")
         dataset = load_dataset(
             "imagefolder",
             data_files=data_files,
@@ -286,7 +293,7 @@ def main(config: omegaconf.omegaconf):
 
     train_transforms = transforms.Compose(
         [
-            transforms.Resize(resolution, interpolation=transforms.InterpolationMode.BILINEAR),
+            transforms.Resize([max(resolution)], interpolation=transforms.InterpolationMode.BILINEAR),
             transforms.CenterCrop(resolution) if center_crop else transforms.RandomCrop(resolution),
             transforms.RandomHorizontalFlip() if random_flip else transforms.Lambda(lambda x: x),
             transforms.ToTensor(),
@@ -302,10 +309,10 @@ def main(config: omegaconf.omegaconf):
 
     with accelerator.main_process_first():
         max_train_samples = 'max_train_samples' in config and config.max_train_samples or None
-        if max_train_samples is not None and max_train_samples < len(dataset["train"]):
-            dataset["train"] = dataset["train"].shuffle(seed=seed).select(range(max_train_samples))
+        if max_train_samples is not None and max_train_samples < len(dataset):
+            dataset = dataset.shuffle(seed=seed).select(range(max_train_samples))
         # Set the training transforms
-        train_dataset = dataset["train"].with_transform(preprocess_train)
+        train_dataset = dataset.with_transform(preprocess_train)
 
     def collate_fn(examples):
         pixel_values = torch.stack([example["pixel_values"] for example in examples])
@@ -517,7 +524,7 @@ def main(config: omegaconf.omegaconf):
             validation_epochs = 'validation_epochs' in config and config.validation_epochs or 1
             num_validation_images = 'num_validation_images' in config and config.num_validation_images or 4
             if validation_prompt is not None and (epoch % validation_epochs == 0 or epoch == num_train_epochs - 1):
-                Logger.info(
+                Logger.debug(
                     f"Running validation... \n Generating {num_validation_images} images with prompt:"
                     f" {validation_prompt}."
                 )

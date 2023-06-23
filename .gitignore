@@ -177,3 +177,7 @@ wandb
 
 /py3_8
 **/output/**
+
+*.jpg
+*.JPG
+*.png

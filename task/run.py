@@ -2,6 +2,8 @@ import argparse
 import omegaconf
 from .runner.txt2img_inference import Txt2ImgInferenceRunner
 from .runner.txt2img_train_lora import Txt2ImgLoraTraningRunner
+from .runner.blip_image_caption import BlipImageCaptionRunner
+from .runner.image_caption_tagger import ImageCaptionTaggerRunner
 from .log import get_logger
 import logging
 import os
@@ -9,7 +11,9 @@ Logging = get_logger(__name__)
 Logging.setLevel(logging.DEBUG)
 AVAILABLE_RUNNERS = {
     Txt2ImgInferenceRunner.name: Txt2ImgInferenceRunner,
-    Txt2ImgLoraTraningRunner.name: Txt2ImgLoraTraningRunner
+    Txt2ImgLoraTraningRunner.name: Txt2ImgLoraTraningRunner,
+    BlipImageCaptionRunner.name: BlipImageCaptionRunner,
+    ImageCaptionTaggerRunner.name: ImageCaptionTaggerRunner,
 }
 def parse_args():
     parser = argparse.ArgumentParser(description='stable diffusion pipeline runner')

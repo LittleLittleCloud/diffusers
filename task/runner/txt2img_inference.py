@@ -2,6 +2,7 @@ import omegaconf
 import torch
 from diffusers import StableDiffusionPipeline
 from diffusers.utils.loras import load_lora_weights
+from diffusers.schedulers.scheduling_dpmsolver_multistep import DPMSolverMultistepScheduler
 from diffusers.utils import randn_tensor
 from task.log import get_logger
 from datasets import load_dataset, Image, Dataset
@@ -92,6 +93,8 @@ class Txt2ImgInferenceRunner(Runner):
                 f.writelines([prompt, negative_prompt])
             for j, image in enumerate(images.images):
                 image.save(os.path.join(output_folder, f'{i}-{j}.png'))
+        
+        del pipe
                 
         
         
