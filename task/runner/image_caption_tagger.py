@@ -67,8 +67,7 @@ class ImageCaptionTaggerRunner(Runner):
             x[caption_column] = f'{caption}, {tagger}'
             return x
         dataset = dataset.map(combine_caption_tagger)
-        del dataset['_caption']
-        del dataset['_tagger']
+        dataset = dataset.remove_columns(['_caption', '_tagger'])
         output_folder = output_config.output_folder
         output_folder = get_local_path(pipeline_directory, output_folder)
         Logger.info(f'Saving dataset to {output_folder}')
