@@ -177,6 +177,8 @@ wandb
 
 /py3_8
 **/output/**
+dataset/
+model/
 
 *.jpg
 *.JPG

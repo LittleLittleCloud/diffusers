@@ -6,14 +6,15 @@
     checkpoint: 'Salesforce/blip2-opt-2.7b'
   
   # inference parameter
-  inference:
-    device: 'cuda'
-    batch_size: 20
-    trigger_world: 'fengyizhou'
+  device: 'cuda'
+  batch_size: 20
+  trigger_world: 'fengyizhou'
+  caption_column: 'text'
+  image_column: 'image'
   
   # input folder
   input:
-    input_folder: '../dataset/fengpig'
+    input_folder: '../dataset/fengpig-wedding'
     patterns:
       - '*.JPG'
       - '*.png'
@@ -21,7 +22,5 @@
   
   # output folder
   output:
-    output_folder: '../dataset/fengpig-blip' # if ignore, will use input_folder as output_folder
-    image_column: 'image'
-    caption_column: 'text'
+    output_folder: '../dataset/fengpig-wedding-blip' # if ignore, will use input_folder as output_folder
     output_as_image_folder: True # if True, will generate metadata.csv and images

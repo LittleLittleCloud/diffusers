@@ -2,12 +2,12 @@
   name: 'txt2img_lora_training'
   # model configuration
   model:
-    base_model: '../model/base/majicMIX.safetensors'
+    base_model: '../model/base/ChilloutMix.safetensors'
       
   # dataset
   # can be a dataset from huggingface
   # or a dataset from local
-  dataset_name: '../dataset/fengpig-blip'
+  dataset_name: '../dataset/fengpig-wedding-blip'
   image_column: 'image'
   caption_column: 'text'
   max_train_samples: 10000 # for debugging purpose
@@ -17,27 +17,27 @@
 
   # train option
   seed: 321001525
-  batch_size: 4
-  num_train_epochs: 250
-  learning_rate: 0.00001
-  checkpoint_steps: 1000 # Save a checkpoint of the training state every X updates. These checkpoints are only suitable for resuming training using `--resume_from_checkpoint`.
+  batch_size: 1
+  num_train_epochs: 100
+  learning_rate: 0.0001
+  checkpoint_steps: 500 # Save a checkpoint of the training state every X updates. These checkpoints are only suitable for resuming training using `--resume_from_checkpoint`.
   resume_from_checkpoint: 'latest' #Resume from a previous checkpoint file located inside the output directory.
   gradient_accumulation_steps: 1
   mixed_precision: True # Use mixed precision training. Mixed precision training is only available for GPUs with compute capability >= 7.0.
   allow_tf32: False #Enable TF32 for faster training on Ampere GPUs, cf https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices
   scale_lr: False
   use_8bit_adam: False
-  # snr_gamma: 5.0 # "SNR weighting gamma to be used if rebalancing the loss. Recommended value is 5.0. More details here: https://arxiv.org/abs/2303.09556."
+  snr_gamma: 5.0 # "SNR weighting gamma to be used if rebalancing the loss. Recommended value is 5.0. More details here: https://arxiv.org/abs/2303.09556."
   # max_grad_norm: 1.0 # "Max gradient norm."
   
   # validation option
-  validation_prompt: 'a woman with a black hair tie on her head, top quality, high resolution, masterpiece, fengyizhou, 118-th-picture'
+  validation_prompt: 'yizhoufeng, a woman with a black hair tie on her head, top quality, high resolution, masterpiece, fengyizhou, 118-th-picture'
   validation_negative_prompt: 'bad, low quality, low resolution, ugly'
   num_validation_images: 4
   validation_epochs: 1
 
   # output option
   output_folder: 'output/lora' # The output directory where the model predictions and checkpoints will be written.
-  output_name: 'lora.bin' # The name of the output model.
+  output_name: 'lora-wedding.bin' # The name of the output model.
   logging_folder: 'logs'  # The output directory where the logs will be written. It would be $(output_folder)/$(logging_folder)
   save_as_safe_tensors: False # Save the model as safe tensors. This will save the model in a format that can be loaded by the SafeTensors library.

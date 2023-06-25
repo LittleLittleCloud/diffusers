@@ -2,9 +2,10 @@ from typing import Any
 import omegaconf
 import torch
 import os
+from task.config.image_caption_config import *
 from task.runner.runner import Runner
 from task.runner.tagger.interrogator import Interrogator, WaifuDiffusionInterrogator
-from task.runner.utils import get_path, get_local_path, batch
+from task.runner.utils import *
 from task.log import get_logger
 import transformers
 from transformers import Blip2Processor, Blip2ForConditionalGeneration
@@ -18,27 +19,23 @@ Logger = get_logger(__name__)
 class WaifuImageTaggerRunner(Runner):
     name: str = 'waifu_image_tagger.v0'
     def __call__(self,
-                 pipeline_directory: str,
-                 input: omegaconf.omegaconf,
-                 model_config: omegaconf.omegaconf,
-                 inference: omegaconf.omegaconf,
-                 output: omegaconf.omegaconf) -> Dataset:
-        Logger.debug(f'pipeline directory: {pipeline_directory}')
+                 cwd: str,
+                 cfg: WDV1_4TaggerConfig) -> Dataset:
+        Logger.debug(f'pipeline directory: {cwd}')
         dataset = None
-        input_folder = 'input_folder' in input and input.input_folder or None
-        image_paths = None
-        if input_folder is not None:
-            input_folder = get_path(pipeline_directory, input_folder)
-            patterns = 'patterns' in input and input.patterns or ['**/*']
-            recursive = 'recursive' in input and input.recursive or False
-            Logger.info(f'Loading dataset from {input_folder}')
-            Logger.info(f'patterns: {patterns}')
-            Logger.info(f'recursive: {recursive}')
-            image_paths = []
-            for pattern in patterns:
-                image_paths.extend(glob.glob(os.path.join(input_folder, pattern), recursive=recursive))
-            dataset = Dataset.from_dict({"image": image_paths}).cast_column("image", Image())
-            Logger.info(f'Loaded dataset with {len(image_paths)} samples')
+        image_column = cfg.image_column
+        caption_column = cfg.caption_column
+        input: Union[ImageFolderConfig, DatasetConfig] = None
+        if cfg.input.dataset is not None:
+            input = cfg.input.dataset
+            input.dataset_name = get_local_path(cwd, input.dataset_name)
+            dataset = create_dataset_from_dataset_config(input)
+        elif cfg.input.folder is not None:
+            input = cfg.input.folder
+            input.image_folder = get_path(cwd, input.image_folder)
+            dataset = create_dataset_from_image_folder(input)
+        else:
+            raise Exception(f'input {input} not recognized')
         
         def compose(x):
             tensor = [image for image in x["image"]]
@@ -46,52 +43,41 @@ class WaifuImageTaggerRunner(Runner):
             return x
             
         train_images = dataset.with_transform(compose)
-        batch_size = 'batch_size' in inference and inference.batch_size or 1
-        filter_threshold = 'filter_threshold' in inference and inference.filter_threshold or 0.5
+        batch_size = cfg.batch_size
         output_texts = []
-        checkpoint = model_config.checkpoint
-        checkpoint = get_path(pipeline_directory, checkpoint)
-        Logger.info(f'Loading checkpoint from {checkpoint}')
+        model_config = cfg.model
+        if model_config is not None:
+            checkpoint = get_path(cwd, model_config.model_name)
+        else:
+            raise Exception(f'model {model_config} not recognized')
+        Logger.info(f'Loading model from {checkpoint}')
         model = WaifuDiffusionInterrogator(checkpoint)
         for i, images in enumerate(batch(train_images['image'], batch_size)):
             Logger.info(f'Processing batch {i}')
             reses = model.interrogate(images)
             for res in reses:
                 tags = res[1]
-                filter_tags = [k for k, v in tags.items() if v >= filter_threshold]
+                filter_tags = [k for k, v in tags.items() if v >= cfg.filter_threshold]
                 if len(filter_tags) == 0:
                     continue
                 Logger.info(f'Found {len(filter_tags)} tags')
                 Logger.info(f'{",".join(filter_tags)}')
                 output_texts.append(f'{",".join(filter_tags)}')
         Logger.info(f'Finished processing {len(output_texts)} samples')
-        image_column = 'image_column' in output and output.image_column or 'image'
-        caption_column = 'caption_column' in output and output.caption_column or 'caption'
+        if caption_column in dataset.column_names:
+            Logger.info(f'Removing column {caption_column}')
+            dataset = dataset.remove_column(caption_column)
         dataset = dataset.add_column(caption_column, output_texts)
-        if(image_column != 'image'):
-            dataset.rename_column('image', image_column)
-        output_folder = output.output_folder
-        output_folder = get_local_path(pipeline_directory, output_folder)
-        Logger.info(f'Writing output to {output_folder}')
-        os.makedirs(output_folder, exist_ok=True)
-        dataset.save_to_disk(output_folder)
+        if cfg.output.folder is not None:
+            cfg.output.folder.image_folder = get_local_path(cwd, cfg.output.folder.image_folder)
+            cfg.output.folder.image_column = image_column
+            cfg.output.folder.label_column = caption_column
+            save_dataset_as_image_folder(dataset, cfg.output.folder)
 
-        output_as_image_folder = 'output_as_image_folder' in output and output.output_as_image_folder or False
-        if output_as_image_folder:
-            Logger.info(f'output as image folder')
-            Logger.info(f'Writing metadata to {output_folder}')
-            with open(os.path.join(output_folder, 'metadata.csv'), 'w') as f:
-                f.write(f'\"{image_column}\",\"{caption_column}\"\n')
-                for i, image_path in enumerate(image_paths):
-                    image_name = f'{i}-{os.path.basename(image_path)}'
-                    f.write(f'\"{image_name},{output_texts[i]}\n')
-                    # copy image to output folder
-                    Logger.info(f'Writing image {image_name}')
-                    shutil.copy(image_path, os.path.join(output_folder, image_name))
-        Logger.info(f'Finished writing output to {output_folder}')
         del model
         return dataset
 
-    def execute(self, config: omegaconf.omegaconf):
-        pipeline_directory = os.path.dirname(config._pipeline_path)
-        self.__call__(pipeline_directory, config.input, config.model, config.inference, config.output)
+    def execute(self, cwd: str, config: omegaconf.omegaconf):
+        cfg: WDV1_4TaggerConfig = omegaconf.OmegaConf.structured(WDV1_4TaggerConfig)
+        cfg = omegaconf.OmegaConf.merge(cfg, config)
+        self.__call__(cwd, cfg)

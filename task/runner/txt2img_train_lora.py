@@ -27,10 +27,9 @@ from torchvision import transforms
 
 Logger = get_logger(__name__)
 
-def main(config: omegaconf.omegaconf):
+def main(cwd: str, config: omegaconf.omegaconf):
     pipeline_path = config._pipeline_path
-    pipeline_directory = os.path.dirname(pipeline_path)
-    output_dir = get_local_path(pipeline_directory, config.output_folder)
+    output_dir = get_local_path(cwd, config.output_folder)
     Logger.info(f'Output directory: {output_dir}')
     logging_dir = os.path.join(output_dir, config.logging_folder)
     Logger.info(f'Logging to {logging_dir}')
@@ -71,7 +70,7 @@ def main(config: omegaconf.omegaconf):
     # Load scheduler, tokenizer and models.
     model = load_pipeline(
         cfg=config.model,
-        directory_path=pipeline_directory,
+        directory_path=cwd,
         logger=Logger,)
     # tokenizer = CLIPTokenizer.from_pretrained(
     #     args.pretrained_model_name_or_path, subfolder="tokenizer", revision=args.revision
@@ -221,7 +220,7 @@ def main(config: omegaconf.omegaconf):
     # download the dataset.
 
     dataset_name = 'dataset_name' in config and config.dataset_name or None
-    dataset_name = get_path(pipeline_directory, dataset_name)
+    dataset_name = get_path(cwd, dataset_name)
     dataset_config_name = 'dataset_config_name' in config and config.dataset_config_name or None
     cache_dir = 'cache_dir' in config and config.cache_dir or None
     if dataset_name is not None:
@@ -239,7 +238,7 @@ def main(config: omegaconf.omegaconf):
             dataset = load_from_disk(dataset_name)
     else:
         train_data_dir = 'train_data_dir' in config and config.train_data_dir or None
-        train_data_dir = get_path(pipeline_directory, train_data_dir)
+        train_data_dir = get_path(cwd, train_data_dir)
         Logger.info(f"Loading dataset from {train_data_dir}")
         data_files = {}
         data_files = os.path.join(train_data_dir, "**")
@@ -579,6 +578,6 @@ def main(config: omegaconf.omegaconf):
 
 class Txt2ImgLoraTraningRunner(Runner):
     name: str = 'txt2img_lora_training.v0'
-    def execute(self, config: omegaconf.omegaconf):
-        main(config)
+    def execute(self, cwd:str, config: omegaconf.omegaconf):
+        main(cwd, config)
         

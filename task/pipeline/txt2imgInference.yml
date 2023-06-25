@@ -3,28 +3,34 @@
 
   # model configuration
   model:
-    base_model: '../model/base/majicMIX.safetensors' # model parameter
+    base_model: '../model/base/ChilloutMix.safetensors' # model parameter
     loras: # lora : weight
       - lora:
         name: '/home/xiaoyuz/diffusers/task/pipeline/output/lora/lora.bin'
-        weight: 1
-    sampler: 'dpm++ 2m' # ddim, dpm, dpm++ 2m karras, dpm++ 2m
+        weight: 0.7
+      - lora:
+        name: '/home/xiaoyuz/diffusers/task/pipeline/output/lora/lora-wedding.bin'
+        weight: 0.8
+      - lora:
+        name: '/home/xiaoyuz/diffusers/task/model/lora/moxin.safetensors'
+        weight: 0.1
+    sampler: 'dpm++ 2m karras' # ddim, dpm, dpm++ 2m karras, dpm++ 2m
     
   # inference parameter
   step: 30
   width: 512
   height: 768
   seed: 321001525
-  cfg: 7.0
+  cfg: 7
   num_images_per_prompt: 10
 
   # input parameter
   # accept a single input (prompt/negative_prompt/image) or a dataset (name/image_column/prompt_column/negative_prompt_column
   input:
-    prompt: 'fengyizhou, fengyizhou, fengyizhou (masterpiece, best quality)'
-    negative_prompt: 'nsfw, low quality, low resolution, bad eyes, bad face. blur' # toot mouth, protruding mouth, chubby face'
-    image: './output/0-1 copy.png' # if ignore, will use prompt to generate image
-    strength: 0.7
+    prompt: 'fengyizhou,1girl,solo,black_hair, look_at_view,wedding_dress, full_body, short_hair_bun,black_eyes,realistic'
+    negative_prompt: 'low quality, low resolution, blur, bad eyes, open_mouth' # toot mouth, protruding mouth, chubby face'
+    # image: './output/0-3 copy.png' # if ignore, will use prompt to generate image
+    # strength: 0.8
     # dataset:
     #   name: './blip'
     #   image_column: 'image'

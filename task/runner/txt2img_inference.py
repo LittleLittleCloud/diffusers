@@ -16,10 +16,9 @@ Logger = get_logger(__name__)
 
 class Txt2ImgInferenceRunner(Runner):
     name: str = 'txt2img_inference.v0'
-    def execute(self, config: omegaconf.omegaconf):
-        pipeline_directory = os.path.dirname(config._pipeline_path)
-        Logger.debug(f'pipeline directory: {pipeline_directory}')
-        pipe = load_pipeline(config.model, pipeline_directory, Logger)
+    def execute(self, cwd: str, config: omegaconf.omegaconf):
+        Logger.debug(f'pipeline directory: {cwd}')
+        pipe = load_pipeline(config.model, cwd, Logger)
         # generate image
         width = 'width' in config and config.width or 512
         height = 'height' in config and config.height or 768
@@ -50,12 +49,12 @@ class Txt2ImgInferenceRunner(Runner):
             image = 'image' in input and input.image or None
             strength = 'strength' in input and input.strength or 0.8
             if image is not None:
-                image = get_local_path(pipeline_directory, image)
+                image = get_local_path(cwd, image)
                 Logger.info(f'Loading image from {image}')
                 image = PIL.Image.open(image)
             dataset = Dataset.from_dict({'prompt': [prompt], 'negative_prompt': [negative_prompt], 'image': [image], 'strength': [strength]})
         if not os.path.isabs(output_folder):
-            output_folder = os.path.join(pipeline_directory, output_folder)
+            output_folder = os.path.join(cwd, output_folder)
         Logger.info(f'Saving images to {output_folder}')
         if not os.path.exists(output_folder):
             os.mkdir(output_folder)

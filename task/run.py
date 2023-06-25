@@ -31,13 +31,15 @@ def main(args):
     pipeline = args.pipeline
     Logging.info(f'Loading pipeline from {pipeline}')
     pipeline_path = os.path.join(os.getcwd(), pipeline) if not os.path.isabs(pipeline) else pipeline
+    pipeline_dir = os.path.dirname(pipeline_path)
     Logging.debug(f'pipeline path: {pipeline_path}')
     cfg = omegaconf.OmegaConf.load(pipeline)
     for task in cfg:
-        task['_pipeline_path'] = pipeline_path
         Logging.info(f'Running task: {task.name}')
         runner = AVAILABLE_RUNNERS[task.task]()
-        runner.execute(task)
+        del task['task']
+        del task['name']
+        runner.execute(pipeline_dir, task)
 
 if __name__ == '__main__':
     args = parse_args()
