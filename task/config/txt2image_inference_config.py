@@ -31,8 +31,6 @@ class Txt2ImageInferenceConfig:
     width: int = 512
     height: int = 768
     sampler: str = "ddim"
-    strength: float = 0.5
     prompt_column: Optional[str] = 'prompt'
     negative_prompt_column: Optional[str] = 'negative_prompt'
-    image_column: Optional[str] = "image"
     output_image_column: Optional[str] = "output_image"

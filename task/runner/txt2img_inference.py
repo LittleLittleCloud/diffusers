@@ -42,7 +42,7 @@ class Txt2ImgInferenceRunner(Runner):
         step = cfg.step
         prompt_column = cfg.prompt_column
         negative_prompt_column = cfg.negative_prompt_column
-        image_column = cfg.image_column
+        dtype = torch.float16 if cfg.dtype == 'float16' else torch.float32
 
         cfg_value = cfg.cfg
         num_images_per_prompt = cfg.num_images_per_prompt
@@ -53,7 +53,6 @@ class Txt2ImgInferenceRunner(Runner):
         Logger.info(f'Generating image with cfg: {cfg}')
         Logger.info(f'Generating image with num_images_per_prompt: {num_images_per_prompt}')
         
-        image_processor = VaeImageProcessor(vae_scale_factor=2 ** (len(pipe.vae.config.block_out_channels) - 1))
         dataset = None
         generator = torch.manual_seed(seed)
         if cfg.input.folder is not None:
@@ -65,12 +64,7 @@ class Txt2ImgInferenceRunner(Runner):
                 prompt_column: [cfg.input.prompt],
                 negative_prompt_column: [cfg.input.negative_prompt],
             }
-            if cfg.input.image is not None:
-                input[image_column] = [cfg.input.image]
-            else:
-                input[image_column] = [None]
-                
-            dataset = Dataset.from_dict(input).cast_column(image_column, Image())
+            dataset = Dataset.from_dict(input)
         else:
             raise ValueError('Input is not valid')
         
@@ -79,21 +73,6 @@ class Txt2ImgInferenceRunner(Runner):
         for i, row in enumerate(dataset):
             prompt = row[prompt_column]
             negative_prompt = row[negative_prompt_column]
-            image = row[image_column]
-            strength = cfg.strength
-            latent = None
-            if image is not None:
-                image = image_processor.preprocess(image, width=width, height=height).to(device = pipe.device, dtype=dtype)
-                # stack image
-                timesteps, step = pipe.get_timesteps(step, strength)
-                latent_timestep = timesteps[:1].repeat(num_images_per_prompt)
-
-                init_latents = pipe.vae.encode(image).latent_dist.sample(generator)
-                init_latents = init_latents * pipe.vae.config.scaling_factor
-                init_latents = init_latents.repeat(num_images_per_prompt, 1, 1, 1)
-                init_latents = init_latents.to(dtype=dtype)
-                noise = randn_tensor(init_latents.shape, generator=generator, device=pipe.device, dtype=dtype)
-                latent = pipe.scheduler.add_noise(init_latents, noise, latent_timestep)
             Logger.info(f'Generating image with prompt: {prompt}')
             Logger.info(f'Generating image with negative prompt: {negative_prompt}')
             images = pipe(
@@ -101,7 +80,6 @@ class Txt2ImgInferenceRunner(Runner):
                 negative_prompt=negative_prompt,
                 width=width,
                 height=height,
-                latents=latent,
                 generator=generator,
                 num_inference_steps=step,
                 guidance_scale = cfg_value,

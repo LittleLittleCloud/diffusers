@@ -5,12 +5,13 @@ import shutil
 
 import torch
 from diffusers.utils.loras import load_lora_weights
-from diffusers import StableDiffusionPipeline
+from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline
 from diffusers.schedulers.scheduling_ddim import DDIMScheduler
 from diffusers.schedulers.scheduling_dpmsolver_multistep import DPMSolverMultistepScheduler
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from diffusers.schedulers.scheduling_dpmsolver_sde import DPMSolverSDEScheduler
 import omegaconf
+from diffusers.utils.torch_utils import randn_tensor
 from task.config.dataset_config import *
 from task.config.model_config import *
 from datasets import load_dataset, Image, Dataset
@@ -34,7 +35,31 @@ def get_local_path(directory_path: str, file_path: str) -> str:
         return file_path
     else:
         return os.path.join(directory_path, file_path)
+
+def load_stable_diffusion_img2img_pipeline(cwd: str, cfg: StableDiffusionModelConfig, device:str = 'cuda', dtype = torch.float16) -> StableDiffusionImg2ImgPipeline:
+    Logger.info(f'Loading pipeline')
+    base_model = cfg.base_model.model_name
+    base_model = get_path(cwd, base_model)
+    Logger.info(f'Loading base model from {base_model}')
+    pipe = StableDiffusionImg2ImgPipeline.from_ckpt(
+        base_model,
+        load_safety_checker = False,
+        torch_dtype=dtype)
     
+    pipe = pipe.to(device)
+    loras = cfg.loras
+    for lora in loras:
+        Logger.info(f'Applying lora: {lora.model} with weight {lora.weight}')
+        model_name = get_path(cwd, lora.model.model_name)
+        pipe = load_lora_weights(
+                pipeline = pipe,
+                checkpoint_path=model_name,
+                multiplier=lora.weight,
+                device=device,
+                dtype=dtype)
+
+    return pipe
+
 def load_stable_diffusion_pipeline(cwd: str, cfg: StableDiffusionModelConfig, device:str = 'cuda', dtype = torch.float16) -> StableDiffusionPipeline:
     Logger.info(f'Loading pipeline')
     base_model = cfg.base_model.model_name
@@ -56,16 +81,6 @@ def load_stable_diffusion_pipeline(cwd: str, cfg: StableDiffusionModelConfig, de
                 multiplier=lora.weight,
                 device=device,
                 dtype=dtype)
-
-    def get_timesteps(num_inference_steps, strength = 0.8):
-        # get the original timestep using init_timestep
-        init_timestep = min(int(num_inference_steps * strength), num_inference_steps)
-
-        t_start = max(num_inference_steps - init_timestep, 0)
-        timesteps = pipe.scheduler.timesteps[t_start * pipe.scheduler.order :].to(dtype=torch.int32)
-
-        return timesteps, num_inference_steps - t_start
-    pipe.get_timesteps = get_timesteps
 
     return pipe
 
