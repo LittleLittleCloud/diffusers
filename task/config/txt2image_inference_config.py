@@ -34,3 +34,8 @@ class Txt2ImageInferenceConfig:
     prompt_column: Optional[str] = 'prompt'
     negative_prompt_column: Optional[str] = 'negative_prompt'
     output_image_column: Optional[str] = "output_image"
+
+    image_column: Optional[str] =  None # if provided, img2img
+    strength: Optional[float] = None
+    inner_image_column: Optional[str] =  None # if provided, img2img repaint
+    mask_image_column: Optional[str] =  None # if provided, img2img repaint 

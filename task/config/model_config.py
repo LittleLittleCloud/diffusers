@@ -24,6 +24,5 @@ class LoadLoraConfig:
 
 @dataclass
 class StableDiffusionModelConfig:
-    type: str = "stable_diffusion"
     base_model: PretrainedModelConfig = MISSING
     loras: List[LoadLoraConfig] = field(default_factory=list)

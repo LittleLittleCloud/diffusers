@@ -57,6 +57,17 @@ def load_stable_diffusion_img2img_pipeline(cwd: str, cfg: StableDiffusionModelCo
                 multiplier=lora.weight,
                 device=device,
                 dtype=dtype)
+    
+    def get_timesteps(num_inference_steps, strength, device):
+        # get the original timestep using init_timestep
+        init_timestep = min(int(num_inference_steps * strength), num_inference_steps)
+
+        t_start = max(num_inference_steps - init_timestep, 0)
+        timesteps = pipe.scheduler.timesteps[t_start * pipe.scheduler.order :]
+        # to int32
+        timesteps = timesteps.to(torch.int32)
+        return timesteps, num_inference_steps - t_start
+    pipe.get_timesteps = get_timesteps
 
     return pipe
 

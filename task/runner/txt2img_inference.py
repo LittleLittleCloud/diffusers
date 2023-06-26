@@ -5,11 +5,11 @@ from diffusers.utils.loras import load_lora_weights
 from diffusers.schedulers.scheduling_dpmsolver_multistep import DPMSolverMultistepScheduler
 from diffusers.utils import randn_tensor
 from task.log import get_logger
-from datasets import load_dataset, Image, Dataset
+from datasets import load_dataset, Dataset
 from torchvision import transforms
+import PIL.Image
 from diffusers.image_processor import VaeImageProcessor
 import os
-import PIL
 from task.runner.runner import Runner
 from task.config.txt2image_inference_config import *
 from task.config.model_config import *
@@ -22,7 +22,19 @@ class Txt2ImgInferenceRunner(Runner):
         Logger.debug(f'pipeline directory: {cwd}')
         cfg: Txt2ImageInferenceConfig = omegaconf.OmegaConf.structured(Txt2ImageInferenceConfig)
         cfg = omegaconf.OmegaConf.merge(cfg, config)
-        pipe = load_stable_diffusion_pipeline(cwd, cfg.model, cfg.device)
+        mode: str
+        pipe: Union[StableDiffusionPipeline, StableDiffusionImg2ImgPipeline] = None
+        if  cfg.image_column is None:
+            Logger.info("txt2img mode")
+            mode = 'txt2img'
+            pipe = load_stable_diffusion_pipeline(cwd, cfg.model, cfg.device)
+        elif cfg.image_column is not None and cfg.inner_image_column is None:
+            Logger.info("img2img mode")
+            mode = 'img2img'
+            pipe = load_stable_diffusion_img2img_pipeline(cwd, cfg.model, cfg.device)
+        else:
+            raise Exception("Invalid mode")
+
         Logger.info(pipe.scheduler.config)
         if cfg.sampler == 'ddim':
             pipe.scheduler = DDIMScheduler.from_config(pipe.scheduler.config)
@@ -43,7 +55,9 @@ class Txt2ImgInferenceRunner(Runner):
         prompt_column = cfg.prompt_column
         negative_prompt_column = cfg.negative_prompt_column
         dtype = torch.float16 if cfg.dtype == 'float16' else torch.float32
-
+        image_column = cfg.image_column
+        inner_image_column = cfg.inner_image_column
+        strength = cfg.strength
         cfg_value = cfg.cfg
         num_images_per_prompt = cfg.num_images_per_prompt
         Logger.info(f'Generating image with width: {width}')
@@ -64,6 +78,9 @@ class Txt2ImgInferenceRunner(Runner):
                 prompt_column: [cfg.input.prompt],
                 negative_prompt_column: [cfg.input.negative_prompt],
             }
+            if mode == 'img2img':
+                image_path = get_local_path(cwd, cfg.input.image)
+                input[image_column] = [image_path]
             dataset = Dataset.from_dict(input)
         else:
             raise ValueError('Input is not valid')
@@ -73,17 +90,25 @@ class Txt2ImgInferenceRunner(Runner):
         for i, row in enumerate(dataset):
             prompt = row[prompt_column]
             negative_prompt = row[negative_prompt_column]
+            args = {
+                'prompt': prompt,
+                'negative_prompt': negative_prompt,
+                'generator': generator,
+                'num_inference_steps': step,
+                'guidance_scale': cfg_value,
+                'num_images_per_prompt': num_images_per_prompt
+            }
+
+            if mode == 'txt2img':
+                args['width'] = width
+                args['height'] = height
+            if mode == 'img2img':
+                image = PIL.Image.open(row[image_column])
+                args['image'] = [image] * num_images_per_prompt
+                args['strength'] = strength
             Logger.info(f'Generating image with prompt: {prompt}')
             Logger.info(f'Generating image with negative prompt: {negative_prompt}')
-            images = pipe(
-                prompt=prompt,
-                negative_prompt=negative_prompt,
-                width=width,
-                height=height,
-                generator=generator,
-                num_inference_steps=step,
-                guidance_scale = cfg_value,
-                num_images_per_prompt=num_images_per_prompt)
+            images = pipe(**args)
             with open(os.path.join(output_folder, f'{i}.txt'), 'w') as f:
                 f.writelines([prompt, negative_prompt])
             for j, image in enumerate(images.images):
