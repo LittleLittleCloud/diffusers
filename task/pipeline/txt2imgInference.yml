@@ -3,18 +3,15 @@
 
   # model configuration
   model:
-    base_model: '../model/base/ChilloutMix.safetensors' # model parameter
+    base_model:
+      model_name: '../model/base/ChilloutMix.safetensors' # model parameter
     loras: # lora : weight
-      - lora:
-        name: '/home/xiaoyuz/diffusers/task/pipeline/output/lora/lora.bin'
+      - model:
+          model_name: '/home/xiaoyuz/diffusers/task/pipeline/output/lora/lora.bin'
         weight: 0.7
-      - lora:
-        name: '/home/xiaoyuz/diffusers/task/pipeline/output/lora/lora-wedding.bin'
+      - model:
+          model_name: '/home/xiaoyuz/diffusers/task/pipeline/output/lora/lora-wedding.bin'
         weight: 0.8
-      - lora:
-        name: '/home/xiaoyuz/diffusers/task/model/lora/moxin.safetensors'
-        weight: 0.1
-    sampler: 'dpm++ 2m karras' # ddim, dpm, dpm++ 2m karras, dpm++ 2m
     
   # inference parameter
   step: 30
@@ -23,6 +20,8 @@
   seed: 321001525
   cfg: 7
   num_images_per_prompt: 10
+  sampler: 'dpm++ 2m karras' # ddim, dpm, dpm++ 2m karras, dpm++ 2m
+
 
   # input parameter
   # accept a single input (prompt/negative_prompt/image) or a dataset (name/image_column/prompt_column/negative_prompt_column
@@ -39,8 +38,5 @@
 
   # output folder
   output:
-    output_folder: 'output'
-    output_as_dataset: True # if True, will output a dataset with image and text
-    output_image_column: 'new_image' # must be provided if output_as_dataset is True
-    output_as_image_folder: True # if True, will output images to output_folder
+    image_folder: 'output'
     

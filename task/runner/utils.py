@@ -12,6 +12,7 @@ from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 from diffusers.schedulers.scheduling_dpmsolver_sde import DPMSolverSDEScheduler
 import omegaconf
 from task.config.dataset_config import *
+from task.config.model_config import *
 from datasets import load_dataset, Image, Dataset
 from task.log import get_logger
 import glob
@@ -34,6 +35,40 @@ def get_local_path(directory_path: str, file_path: str) -> str:
     else:
         return os.path.join(directory_path, file_path)
     
+def load_stable_diffusion_pipeline(cwd: str, cfg: StableDiffusionModelConfig, device:str = 'cuda', dtype = torch.float16) -> StableDiffusionPipeline:
+    Logger.info(f'Loading pipeline')
+    base_model = cfg.base_model.model_name
+    base_model = get_path(cwd, base_model)
+    Logger.info(f'Loading base model from {base_model}')
+    pipe = StableDiffusionPipeline.from_ckpt(
+        base_model,
+        load_safety_checker = False,
+        torch_dtype=dtype)
+    
+    pipe = pipe.to(device)
+    loras = cfg.loras
+    for lora in loras:
+        Logger.info(f'Applying lora: {lora.model} with weight {lora.weight}')
+        model_name = get_path(cwd, lora.model.model_name)
+        pipe = load_lora_weights(
+                pipeline = pipe,
+                checkpoint_path=model_name,
+                multiplier=lora.weight,
+                device=device,
+                dtype=dtype)
+
+    def get_timesteps(num_inference_steps, strength = 0.8):
+        # get the original timestep using init_timestep
+        init_timestep = min(int(num_inference_steps * strength), num_inference_steps)
+
+        t_start = max(num_inference_steps - init_timestep, 0)
+        timesteps = pipe.scheduler.timesteps[t_start * pipe.scheduler.order :].to(dtype=torch.int32)
+
+        return timesteps, num_inference_steps - t_start
+    pipe.get_timesteps = get_timesteps
+
+    return pipe
+
 def load_pipeline(
         cfg: omegaconf.omegaconf,
         directory_path: str,
@@ -97,9 +132,11 @@ def batch(iterable, n=1):
         yield iterable[ndx:min(ndx + n, l)]
 
 def create_dataset_from_image_folder(
+        cwd: str,
         cfg: ImageFolderConfig) -> Dataset:
     Logger.info(f'Creating dataset from image folder')
     image_folder = cfg.image_folder
+    image_folder = get_path(cwd, image_folder)
     patterns = cfg.patterns
     is_recursive = cfg.recursive
     image_column = cfg.image_column
@@ -154,10 +191,10 @@ def save_dataset_as_image_folder(dataset: Dataset, cfg: ImageFolderConfig):
         json.dump(metadata, f)
         Logger.info(f'Saved metadata to {os.path.join(output_folder, cfg.metadata_name)}')
 
-
-def create_dataset_from_dataset_config(cfg: DatasetConfig) -> Dataset:
+def create_dataset_from_dataset_config(cwd: str, cfg: DatasetConfig) -> Dataset:
     Logger.info(f'Creating dataset from dataset config')
     dataset_name = cfg.dataset_name
+    dataset_name = get_path(cwd, dataset_name)
     dataset_config = cfg.dataset_config_name
 
     Logger.info(f'Dataset name: {dataset_name}')

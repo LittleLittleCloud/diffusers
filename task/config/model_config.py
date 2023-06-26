@@ -17,19 +17,13 @@ class HuggingFaceModelConfig:
     push_to_hub: Optional[bool] = False
 
 @dataclass
-class LoraConfig:
-    name: Union[PretrainedModelConfig, HuggingFaceModelConfig] = None
-    is_safe_tensors: Optional[bool] = False
-
-@dataclass
 class LoadLoraConfig:
     type: str = "load_lora"
-    lora: LoraConfig = MISSING
+    model: PretrainedModelConfig = MISSING
     weight: float = 0.5
 
 @dataclass
 class StableDiffusionModelConfig:
     type: str = "stable_diffusion"
-    base_model: Union[str, HuggingFaceModelConfig] = None
+    base_model: PretrainedModelConfig = MISSING
     loras: List[LoadLoraConfig] = field(default_factory=list)
-    sampler: str = 'ddim'
