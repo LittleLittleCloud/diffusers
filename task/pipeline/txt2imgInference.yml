@@ -4,26 +4,26 @@
   # model configuration
   model:
     base_model:
-      model_name: '../model/base/majicMIX.safetensors' # model parameter
+      model_name: 'emilianJR/XXMix_9realistic' # model parameter
     loras: # lora : weight
       - model:
           model_name: '/home/xiaoyuz/diffusers/task/pipeline/output/lora/lora.bin'
-        weight: 0.3
+        weight: 0
       - model:
           model_name: '/home/xiaoyuz/diffusers/task/pipeline/output/lora/lora-wedding.bin'
         weight: 0.8
       - model:
-          model_name: '/home/xiaoyuz/diffusers/task/model/lora/light_and_shadow.safetensors'
+          model_name: '/home/xiaoyuz/diffusers/task/model/lora/moxin.safetensors'
         weight: 0
     
   # inference parameter
   step: 30
-  width: 512
+  width: 768
   height: 768
-  seed: 321001524324
-  cfg: 10
+  seed: 3210121524324
+  cfg: 9
   num_images_per_prompt: 3
-  strength: 0.5
+  strength: 0.8
   image_column: 'image'
   prompt_column: 'text'
   sampler: 'dpm++ 2m karras' # ddim, dpm, dpm++ 2m karras, dpm++ 2m
@@ -31,13 +31,13 @@
   # input parameter
   # accept a single input (prompt/negative_prompt/image) or a dataset (name/image_column/prompt_column/negative_prompt_column
   input:
-    prompt: 'fengyizhou, short_hair_bun'
-    negative_prompt: 'low quality, low resolution, blur, bad eyes, open_mouth, bad_hand' # toot mouth, protruding mouth, chubby face'
+    prompt: 'fengyizhou, short_hair_bun, dress, a lovely painting of fengyizhou in the forest with light snow falling'
+    negative_prompt: 'nsfw,logo,text,badhandv4,EasyNegative,ng_deepnegative_v1_75t,rev2-badprompt,verybadimagenegative_v1.3,negative_hand-neg,mutated hands and fingers,poorly drawn face,extra limb,missing limb,disconnected limbs,malformed hands,ugly,FastNegativeV2,aid291,NegfeetV2' # toot mouth, protruding mouth, chubby face'
     # image: './output/0-6.png'
     dataset:
       dataset_name: '../dataset/fengpig-wedding-blip'
 
   # output folder
   output:
-    image_folder: 'output'
+    image_folder: 'output/img'
     

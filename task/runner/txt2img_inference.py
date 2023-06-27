@@ -92,6 +92,8 @@ class Txt2ImgInferenceRunner(Runner):
         
         output = cfg.output
         output_folder = get_local_path(cwd, output.image_folder)
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
         output_metadata = []
         for i, row in enumerate(dataset):
             prompt = row[prompt_column]

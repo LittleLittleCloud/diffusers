@@ -41,10 +41,17 @@ def load_stable_diffusion_img2img_pipeline(cwd: str, cfg: StableDiffusionModelCo
     base_model = cfg.base_model.model_name
     base_model = get_path(cwd, base_model)
     Logger.info(f'Loading base model from {base_model}')
-    pipe = StableDiffusionImg2ImgPipeline.from_ckpt(
-        base_model,
-        load_safety_checker = False,
-        torch_dtype=dtype)
+    if os.path.exists(base_model):
+        pipe = StableDiffusionImg2ImgPipeline.from_ckpt(
+            base_model,
+            load_safety_checker = False,
+            torch_dtype=dtype)
+    else:
+        pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
+            base_model,
+            load_safety_checker = False,
+            torch_dtype=dtype)
+    pipe.safety_checker = None
     
     pipe = pipe.to(device)
     loras = cfg.loras
