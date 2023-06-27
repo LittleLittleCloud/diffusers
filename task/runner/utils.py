@@ -14,7 +14,7 @@ import omegaconf
 from diffusers.utils.torch_utils import randn_tensor
 from task.config.dataset_config import *
 from task.config.model_config import *
-from datasets import load_dataset, Image, Dataset
+from datasets import load_dataset, Image, Dataset, load_from_disk
 from task.log import get_logger
 import glob
 
@@ -225,8 +225,12 @@ def create_dataset_from_dataset_config(cwd: str, cfg: DatasetConfig) -> Dataset:
 
     Logger.info(f'Dataset name: {dataset_name}')
     Logger.info(f'Dataset config: {dataset_config}')
-
-    dataset = load_dataset(dataset_name, dataset_config)
+    dataset: Dataset
+    if os.path.exists(dataset_name):
+        Logger.info(f'Loading dataset from disk: {dataset_name}')
+        dataset = load_from_disk(dataset_name)
+    else:
+        dataset = load_dataset(dataset_name, dataset_config)
     Logger.info(f'Loaded dataset with {len(dataset)} samples')
 
     return dataset

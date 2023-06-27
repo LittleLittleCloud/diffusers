@@ -4,37 +4,38 @@
   # model configuration
   model:
     base_model:
-      model_name: '../model/base/ChilloutMix.safetensors' # model parameter
+      model_name: '../model/base/majicMIX.safetensors' # model parameter
     loras: # lora : weight
       - model:
           model_name: '/home/xiaoyuz/diffusers/task/pipeline/output/lora/lora.bin'
-        weight: 0.8
+        weight: 0.3
       - model:
           model_name: '/home/xiaoyuz/diffusers/task/pipeline/output/lora/lora-wedding.bin'
-        weight: 0.6
+        weight: 0.8
+      - model:
+          model_name: '/home/xiaoyuz/diffusers/task/model/lora/light_and_shadow.safetensors'
+        weight: 0
     
   # inference parameter
   step: 30
   width: 512
   height: 768
-  seed: 321001525
-  cfg: 7
-  num_images_per_prompt: 10
-  strength: 0.6
+  seed: 321001524324
+  cfg: 10
+  num_images_per_prompt: 3
+  strength: 0.5
   image_column: 'image'
+  prompt_column: 'text'
   sampler: 'dpm++ 2m karras' # ddim, dpm, dpm++ 2m karras, dpm++ 2m
 
   # input parameter
   # accept a single input (prompt/negative_prompt/image) or a dataset (name/image_column/prompt_column/negative_prompt_column
   input:
-    prompt: 'fengyizhou,1girl,solo,black_hair, look_at_view,wedding_dress, full_body, short_hair_bun,black_eyes,realistic'
-    negative_prompt: 'low quality, low resolution, blur, bad eyes, open_mouth' # toot mouth, protruding mouth, chubby face'
-    image: './output/0-6.png'
-    # dataset:
-    #   name: './blip'
-    #   image_column: 'image'
-    #   prompt_column: 'prompt'
-    #   negative_prompt_column: 'negative_prompt'
+    prompt: 'fengyizhou, short_hair_bun'
+    negative_prompt: 'low quality, low resolution, blur, bad eyes, open_mouth, bad_hand' # toot mouth, protruding mouth, chubby face'
+    # image: './output/0-6.png'
+    dataset:
+      dataset_name: '../dataset/fengpig-wedding-blip'
 
   # output folder
   output:

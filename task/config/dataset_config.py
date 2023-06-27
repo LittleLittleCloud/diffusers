@@ -21,7 +21,7 @@ class ImageFolderConfig:
 @dataclass
 class DatasetConfig:
     type: DatasetConfigType = DatasetConfigType.DatasetConfig
-    dataset_name: Optional[str] = None # huggingface repo id.
+    dataset_name: str = MISSING # huggingface repo id.
     dataset_config_name: Optional[str] = None # dataset folder
     image_colunm: Optional[str] = "image"
     label_colunm: Optional[str] = "text"

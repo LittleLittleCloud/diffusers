@@ -66,7 +66,9 @@ class Txt2ImgInferenceRunner(Runner):
         Logger.info(f'Generating image with step: {step}')
         Logger.info(f'Generating image with cfg: {cfg}')
         Logger.info(f'Generating image with num_images_per_prompt: {num_images_per_prompt}')
-        
+        trans = transforms.Compose([
+            transforms.Resize([max(width, height)]),
+        ])
         dataset = None
         generator = torch.manual_seed(seed)
         if cfg.input.folder is not None:
@@ -80,16 +82,29 @@ class Txt2ImgInferenceRunner(Runner):
             }
             if mode == 'img2img':
                 image_path = get_local_path(cwd, cfg.input.image)
-                input[image_column] = [image_path]
+                image = PIL.Image.open(image_path)
+                # resize image to width and height
+                image = trans(image)
+                input[image_column] = [image]
             dataset = Dataset.from_dict(input)
         else:
             raise ValueError('Input is not valid')
         
         output = cfg.output
         output_folder = get_local_path(cwd, output.image_folder)
+        output_metadata = []
         for i, row in enumerate(dataset):
             prompt = row[prompt_column]
-            negative_prompt = row[negative_prompt_column]
+            negative_prompt = row[negative_prompt_column] if negative_prompt_column is not None else None
+
+            # overrite prompt and negative prompt if provided
+            if cfg.input.prompt is not None:
+                Logger.info(f'Overwriting prompt with {cfg.input.prompt}')
+                prompt = cfg.input.prompt
+            if cfg.input.negative_prompt is not None:
+                Logger.info(f'Overwriting negative prompt with {cfg.input.negative_prompt}')
+                negative_prompt = cfg.input.negative_prompt
+            
             args = {
                 'prompt': prompt,
                 'negative_prompt': negative_prompt,
@@ -103,17 +118,39 @@ class Txt2ImgInferenceRunner(Runner):
                 args['width'] = width
                 args['height'] = height
             if mode == 'img2img':
-                image = PIL.Image.open(row[image_column])
+                image = row[image_column]
+                image = trans(image)
+                image_path = os.path.join(output_folder, f'{i}-input.png')
+                image.save(image_path)
                 args['image'] = [image] * num_images_per_prompt
                 args['strength'] = strength
             Logger.info(f'Generating image with prompt: {prompt}')
             Logger.info(f'Generating image with negative prompt: {negative_prompt}')
             images = pipe(**args)
-            with open(os.path.join(output_folder, f'{i}.txt'), 'w') as f:
-                f.writelines([prompt, negative_prompt])
+            with open(os.path.join(output_folder, f'{i}-args.json'), 'w') as f:
+                del args['generator']
+                if 'image' in args:
+                    image_path = os.path.join(output_folder, f'{i}-input.png')
+                    args['image'] = image_path
+                f.write(json.dumps(args, indent=4))
             for j, image in enumerate(images.images):
-                image.save(os.path.join(output_folder, f'{i}-{j}.png'))
+                image_input_path = os.path.join(output_folder, f'{i}-input.png')
+                image_path = os.path.join(output_folder, f'{i}-{j}.png')
+                image.save(image_path)
+                row = {
+                    prompt_column: prompt,
+                    cfg.output_image_column: image_path,
+                }
+                if negative_prompt_column is not None:
+                    row[negative_prompt_column] = negative_prompt
+                
+                if mode == 'img2img':
+                    row[image_column] = image_input_path
+                output_metadata.append(row)
         
+        output_metadata_path = os.path.join(output_folder, 'metadata.json')
+        with open(output_metadata_path, 'w') as f:
+            f.write(json.dumps(output_metadata, indent=4))
         del pipe
                 
         
