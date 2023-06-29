@@ -22,12 +22,14 @@ class Txt2ImgInferenceRunner(Runner):
         Logger.debug(f'pipeline directory: {cwd}')
         cfg: Txt2ImageInferenceConfig = omegaconf.OmegaConf.structured(Txt2ImageInferenceConfig)
         cfg = omegaconf.OmegaConf.merge(cfg, config)
+        dtype = torch.float16 if cfg.dtype == 'float16' else torch.float32
+
         mode: str
         pipe: Union[StableDiffusionPipeline, StableDiffusionImg2ImgPipeline] = None
         if  cfg.image_column is None:
             Logger.info("txt2img mode")
             mode = 'txt2img'
-            pipe = load_stable_diffusion_pipeline(cwd, cfg.model, cfg.device)
+            pipe = load_stable_diffusion_pipeline(cwd, cfg.model, cfg.device, dtype)
         elif cfg.image_column is not None and cfg.inner_image_column is None:
             Logger.info("img2img mode")
             mode = 'img2img'
@@ -54,12 +56,12 @@ class Txt2ImgInferenceRunner(Runner):
         step = cfg.step
         prompt_column = cfg.prompt_column
         negative_prompt_column = cfg.negative_prompt_column
-        dtype = torch.float16 if cfg.dtype == 'float16' else torch.float32
         image_column = cfg.image_column
         inner_image_column = cfg.inner_image_column
         strength = cfg.strength
         cfg_value = cfg.cfg
         num_images_per_prompt = cfg.num_images_per_prompt
+
         Logger.info(f'Generating image with width: {width}')
         Logger.info(f'Generating image with height: {height}')
         Logger.info(f'Generating image with seed: {seed}')
@@ -78,14 +80,16 @@ class Txt2ImgInferenceRunner(Runner):
         elif cfg.input.prompt is not None:
             input = {
                 prompt_column: [cfg.input.prompt],
-                negative_prompt_column: [cfg.input.negative_prompt],
             }
+            if cfg.input.negative_prompt is not None:
+                input[negative_prompt_column] = [cfg.input.negative_prompt]
             if mode == 'img2img':
                 image_path = get_local_path(cwd, cfg.input.image)
                 image = PIL.Image.open(image_path)
                 # resize image to width and height
                 image = trans(image)
                 input[image_column] = [image]
+            print(input)
             dataset = Dataset.from_dict(input)
         else:
             raise ValueError('Input is not valid')

@@ -78,15 +78,21 @@ def load_stable_diffusion_img2img_pipeline(cwd: str, cfg: StableDiffusionModelCo
 
     return pipe
 
-def load_stable_diffusion_pipeline(cwd: str, cfg: StableDiffusionModelConfig, device:str = 'cuda', dtype = torch.float16) -> StableDiffusionPipeline:
+def load_stable_diffusion_pipeline(cwd: str, cfg: StableDiffusionModelConfig, device:str = 'cuda', dtype = torch.float32) -> StableDiffusionPipeline:
     Logger.info(f'Loading pipeline')
     base_model = cfg.base_model.model_name
     base_model = get_path(cwd, base_model)
     Logger.info(f'Loading base model from {base_model}')
-    pipe = StableDiffusionPipeline.from_ckpt(
-        base_model,
-        load_safety_checker = False,
-        torch_dtype=dtype)
+    if os.path.exists(base_model):
+        pipe = StableDiffusionPipeline.from_ckpt(
+            base_model,
+            load_safety_checker = False,
+            torch_dtype=dtype)
+    else:
+        pipe = StableDiffusionPipeline.from_pretrained(
+            base_model,
+            load_safety_checker = False,
+            torch_dtype=dtype)
     
     pipe = pipe.to(device)
     loras = cfg.loras
