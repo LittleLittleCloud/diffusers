@@ -1276,13 +1276,19 @@ class LoraLoaderMixin:
         return new_state_dict, network_alpha
 
 
-class FromCkptMixin:
+class FromSingleFileMixin:
     """
     Load model weights saved in the `.ckpt` format into a [`DiffusionPipeline`].
     """
 
     @classmethod
-    def from_ckpt(cls, pretrained_model_link_or_path, **kwargs):
+    def from_ckpt(cls, *args, **kwargs):
+        deprecation_message = "The function `from_ckpt` is deprecated in favor of `from_single_file` and will be removed in diffusers v.0.21. Please make sure to use `StableDiffusionPipeline.from_single_file(...)` instead."
+        deprecate("from_ckpt", "0.21.0", deprecation_message, standard_warn=False)
+        return cls.from_single_file(*args, **kwargs)
+
+    @classmethod
+    def from_single_file(cls, pretrained_model_link_or_path, **kwargs):
         r"""
         Instantiate a [`DiffusionPipeline`] from pretrained pipeline weights saved in the `.ckpt` format. The pipeline
         is set in evaluation mode (`model.eval()`) by default.
@@ -1339,6 +1345,17 @@ class FromCkptMixin:
                 "ddim"]`.
             load_safety_checker (`bool`, *optional*, defaults to `True`):
                 Whether to load the safety checker or not.
+            text_encoder (`CLIPTextModel`, *optional*, defaults to `None`):
+                An instance of
+                [CLIP](https://huggingface.co/docs/transformers/model_doc/clip#transformers.CLIPTextModel) to use,
+                specifically the [clip-vit-large-patch14](https://huggingface.co/openai/clip-vit-large-patch14)
+                variant. If this parameter is `None`, the function will load a new instance of [CLIP] by itself, if
+                needed.
+            tokenizer (`CLIPTokenizer`, *optional*, defaults to `None`):
+                An instance of
+                [CLIPTokenizer](https://huggingface.co/docs/transformers/v4.21.0/en/model_doc/clip#transformers.CLIPTokenizer)
+                to use. If this parameter is `None`, the function will load a new instance of [CLIPTokenizer] by
+                itself, if needed.
             kwargs (remaining dictionary of keyword arguments, *optional*):
                 Can be used to overwrite load and saveable variables (for example the pipeline components of the
                 specific pipeline class). The overwritten components are directly passed to the pipelines `__init__`
@@ -1350,16 +1367,16 @@ class FromCkptMixin:
         >>> from diffusers import StableDiffusionPipeline
 
         >>> # Download pipeline from huggingface.co and cache.
-        >>> pipeline = StableDiffusionPipeline.from_ckpt(
+        >>> pipeline = StableDiffusionPipeline.from_single_file(
         ...     "https://huggingface.co/WarriorMama777/OrangeMixs/blob/main/Models/AbyssOrangeMix/AbyssOrangeMix.safetensors"
         ... )
 
         >>> # Download pipeline from local file
         >>> # file is downloaded under ./v1-5-pruned-emaonly.ckpt
-        >>> pipeline = StableDiffusionPipeline.from_ckpt("./v1-5-pruned-emaonly")
+        >>> pipeline = StableDiffusionPipeline.from_single_file("./v1-5-pruned-emaonly")
 
         >>> # Enable float16 and move to GPU
-        >>> pipeline = StableDiffusionPipeline.from_ckpt(
+        >>> pipeline = StableDiffusionPipeline.from_single_file(
         ...     "https://huggingface.co/runwayml/stable-diffusion-v1-5/blob/main/v1-5-pruned-emaonly.ckpt",
         ...     torch_dtype=torch.float16,
         ... )
@@ -1383,6 +1400,8 @@ class FromCkptMixin:
         upcast_attention = kwargs.pop("upcast_attention", None)
         load_safety_checker = kwargs.pop("load_safety_checker", True)
         prediction_type = kwargs.pop("prediction_type", None)
+        text_encoder = kwargs.pop("text_encoder", None)
+        tokenizer = kwargs.pop("tokenizer", None)
 
         torch_dtype = kwargs.pop("torch_dtype", None)
 
@@ -1463,6 +1482,8 @@ class FromCkptMixin:
             upcast_attention=upcast_attention,
             load_safety_checker=load_safety_checker,
             prediction_type=prediction_type,
+            text_encoder=text_encoder,
+            tokenizer=tokenizer,
         )
 
         if torch_dtype is not None:
